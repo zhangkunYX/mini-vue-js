@@ -1,5 +1,10 @@
-import { effect, reactive } from "./effect";
+import { effect, reactive, ITERATE_KEY } from "./effect";
+import { computed } from "./computed";
+import { watch } from "./watch";
 export {
-    effect,
-    reactive
+  ITERATE_KEY,
+  effect,
+  reactive,
+  computed,
+  watch
 }
