@@ -112,64 +112,64 @@ describe('reactivity/effect', () => {
   //   expect(dummy).toBe(8)
   // })
 
-  // it('should observe delete operations', () => {
-  //   let dummy
-  //   const obj = reactive({ prop: 'value' })
-  //   effect(() => (dummy = obj.prop))
+  it('should observe delete operations', () => {
+    let dummy
+    const obj = reactive({ prop: 'value' })
+    effect(() => (dummy = obj.prop))
 
-  //   expect(dummy).toBe('value')
-  //   // @ts-ignore
-  //   delete obj.prop
-  //   expect(dummy).toBe(undefined)
-  // })
+    expect(dummy).toBe('value')
+    // @ts-ignore
+    delete obj.prop
+    expect(dummy).toBe(undefined)
+  })
 
-  // it('should observe has operations', () => {
-  //   let dummy
-  //   const obj = reactive<{ prop: string | number }>({ prop: 'value' })
-  //   effect(() => (dummy = 'prop' in obj))
+  it('should observe has operations', () => {
+    let dummy
+    const obj = reactive({ prop: 'value' })
+    effect(() => (dummy = 'prop' in obj))
 
-  //   expect(dummy).toBe(true)
-  //   // @ts-ignore
-  //   delete obj.prop
-  //   expect(dummy).toBe(false)
-  //   obj.prop = 12
-  //   expect(dummy).toBe(true)
-  // })
+    expect(dummy).toBe(true)
+    // @ts-ignore
+    delete obj.prop
+    expect(dummy).toBe(false)
+    obj.prop = 12
+    expect(dummy).toBe(true)
+  })
 
-  // it('should observe properties on the prototype chain', () => {
-  //   let dummy
-  //   const counter = reactive({ num: 0 })
-  //   const parentCounter = reactive({ num: 2 })
-  //   Object.setPrototypeOf(counter, parentCounter)
-  //   effect(() => (dummy = counter.num))
+  it('should observe properties on the prototype chain', () => {
+    let dummy
+    const counter = reactive({ num: 0 })
+    const parentCounter = reactive({ num: 2 })
+    Object.setPrototypeOf(counter, parentCounter)
+    effect(() => (dummy = counter.num))
 
-  //   expect(dummy).toBe(0)
-  //   // @ts-ignore
-  //   delete counter.num
-  //   expect(dummy).toBe(2)
-  //   parentCounter.num = 4
-  //   expect(dummy).toBe(4)
-  //   counter.num = 3
-  //   expect(dummy).toBe(3)
-  // })
+    expect(dummy).toBe(0)
+    // @ts-ignore
+    delete counter.num
+    expect(dummy).toBe(2)
+    parentCounter.num = 4
+    expect(dummy).toBe(4)
+    counter.num = 3
+    expect(dummy).toBe(3)
+  })
 
-  // it('should observe has operations on the prototype chain', () => {
-  //   let dummy
-  //   const counter = reactive({ num: 0 })
-  //   const parentCounter = reactive({ num: 2 })
-  //   Object.setPrototypeOf(counter, parentCounter)
-  //   effect(() => (dummy = 'num' in counter))
+  it('should observe has operations on the prototype chain', () => {
+    let dummy
+    const counter = reactive({ num: 0 })
+    const parentCounter = reactive({ num: 2 })
+    Object.setPrototypeOf(counter, parentCounter)
+    effect(() => (dummy = 'num' in counter))
 
-  //   expect(dummy).toBe(true)
-  //   // @ts-ignore
-  //   delete counter.num
-  //   expect(dummy).toBe(true)
-  //   // @ts-ignore
-  //   delete parentCounter.num
-  //   expect(dummy).toBe(false)
-  //   counter.num = 3
-  //   expect(dummy).toBe(true)
-  // })
+    expect(dummy).toBe(true)
+    // @ts-ignore
+    delete counter.num
+    expect(dummy).toBe(true)
+    // @ts-ignore
+    delete parentCounter.num
+    expect(dummy).toBe(false)
+    counter.num = 3
+    expect(dummy).toBe(true)
+  })
 
   // it('should observe inherited property accessors', () => {
   //   let dummy, parentDummy, hiddenValue
@@ -248,22 +248,22 @@ describe('reactivity/effect', () => {
   //   expect(dummy).toBe('Hello')
   // })
 
-  // it('should observe enumeration', () => {
-  //   let dummy = 0
-  //   const numbers = reactive({ num1: 3 })
-  //   effect(() => {
-  //     dummy = 0
-  //     for (let key in numbers) {
-  //       dummy += numbers[key]
-  //     }
-  //   })
+  it('should observe enumeration', () => {
+    let dummy = 0
+    const numbers = reactive({ num1: 3 })
+    effect(() => {
+      dummy = 0
+      for (let key in numbers) {
+        dummy += numbers[key]
+      }
+    })
 
-  //   expect(dummy).toBe(3)
-  //   numbers.num2 = 4
-  //   expect(dummy).toBe(7)
-  //   delete numbers.num1
-  //   expect(dummy).toBe(4)
-  // })
+    expect(dummy).toBe(3)
+    numbers.num2 = 4
+    expect(dummy).toBe(7)
+    delete numbers.num1
+    expect(dummy).toBe(4)
+  })
 
   // it('should observe symbol keyed properties', () => {
   //   const key = Symbol('symbol keyed prop')
@@ -308,20 +308,20 @@ describe('reactivity/effect', () => {
   //   expect(dummy).toBe(newFunc)
   // })
 
-  // it('should observe chained getters relying on this', () => {
-  //   const obj = reactive({
-  //     a: 1,
-  //     get b() {
-  //       return this.a
-  //     }
-  //   })
+  it('should observe chained getters relying on this', () => {
+    const obj = reactive({
+      a: 1,
+      get b() {
+        return this.a
+      }
+    })
 
-  //   let dummy
-  //   effect(() => (dummy = obj.b))
-  //   expect(dummy).toBe(1)
-  //   obj.a++
-  //   expect(dummy).toBe(2)
-  // })
+    let dummy
+    effect(() => (dummy = obj.b))
+    expect(dummy).toBe(1)
+    obj.a++
+    expect(dummy).toBe(2)
+  })
 
   // it('should observe methods relying on this', () => {
   //   const obj = reactive({

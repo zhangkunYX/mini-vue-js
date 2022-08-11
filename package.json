@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest packages/reactivity/__tests__/watch.spec.js"
+    "test": "jest packages/reactivity/__tests__/effect.spec.js"
   },
   "author": "",
   "license": "ISC",
