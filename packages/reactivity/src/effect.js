@@ -33,7 +33,7 @@ const cleanup = function(effectFn) {
 }
 
 export const track = function(target, key) {
-  if (!activeEffect) return
+  if (!activeEffect || !shouldTrack) return
   let depsMap = bucket.get(target)
   if (!depsMap) bucket.set(target, depsMap = new Map())
   let deps = depsMap.get(key)
@@ -95,7 +95,12 @@ export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
       if (key === 'raw') {
         return target
       }
-      if (!isReadonly) track(target, key)
+
+      if (Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
+        return Reflect.get(arrayInstrumentations, key, recevier)
+      }
+
+      if (!isReadonly && typeof(key) !== 'symbol') track(target, key)
       // return target[key]
       const res = Reflect.get(target, key, recevier)
       if (isShallow) {
@@ -134,7 +139,9 @@ export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
     },
     // 用于拦截 for in
     ownKeys(target) {
-      track(target, ITERATE_KEY)
+      Array.isArray(target) 
+      ? track(target, 'length') 
+      : track(target, ITERATE_KEY)
       return Reflect.ownKeys(target)
     },
     // 用于拦截删除属性操作
@@ -154,8 +161,51 @@ export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
   })
 }
 
+
+const arrayInstrumentations = {
+  
+  // 'includes': (args) => {
+  //   let res = originMethod.apply(this, args)
+  //   if (res === false) {
+  //     res = originMethod.call(this.raw, args)
+  //   }
+  //   return res
+  // }
+}
+
+// fix: const obj = {}, const arr = reactive([obj]), arr.includes(obj)
+;['includes', 'indexOf', 'lastIndexOf'].forEach(method => {
+  const originMethod = Array.prototype[method]
+  arrayInstrumentations[method] = function(...args) {
+    let res = originMethod.apply(this, args)
+    if (res === false || res === -1) {
+      res = originMethod.call(this.raw, args)
+    }
+    return res
+  }
+})
+
+// fix: const arr = reactive([]), effect(() => arr.push(1)), effect(() => arr.push(1))
+let shouldTrack = true
+;['push', 'pop', 'shift', 'unshift', 'splice'].forEach(method => {
+  const originMethod = Array.prototype[method] 
+  arrayInstrumentations[method] = function(...args) {
+    shouldTrack = false
+    let res = originMethod.apply(this, args)
+    shouldTrack = true
+    return res
+  }
+})
+
+const reactiveMap = new Map()
 export const reactive = function(target) {
-  return creatReactive(target)
+  // fix: const obj = {}, const arr = reactive([obj]), arr.includes(arr[0])
+  const existProxy = reactiveMap.get(target)
+  if (existProxy) return existProxy
+
+  const proxy = creatReactive(target)
+  reactiveMap.set(target, proxy)
+  return proxy
 }
 
 export const shallowReactive = function(target) {

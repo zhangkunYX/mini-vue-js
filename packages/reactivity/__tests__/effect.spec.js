@@ -118,7 +118,7 @@ describe('reactivity/effect', () => {
     expect(fnSpy2).toHaveBeenCalledTimes(1)
   })
 
-  it('should not be triggered when set/get array by index', () => {
+  it('should be triggered when set/get array by index', () => {
     const observed = reactive(['foo'])
     const fnSpy = jest.fn(() => observed[0])
     const lengthFnSpy = jest.fn(() => observed.length)
@@ -136,6 +136,32 @@ describe('reactivity/effect', () => {
     observed.length = 0
     expect(lengthFnSpy).toHaveBeenCalledTimes(3)
     expect(fnSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('should be triggered when use for..in iteration and set by index od set length', () => {
+    let sum = 0
+    const observed = reactive([1])
+    const fnSpy = jest.fn(() => {
+      // for (let k in observed) {
+      //   sum += observed[k]
+      // }
+      for (let k of observed) {
+        sum += k
+      }
+    })
+    const lengthFnSpy = jest.fn(() => observed.length)
+
+    effect(fnSpy)
+    expect(fnSpy).toHaveBeenCalledTimes(1)
+    effect(lengthFnSpy)
+    expect(lengthFnSpy).toHaveBeenCalledTimes(1)
+    observed[1] = 2
+    expect(sum).toEqual(4)
+    expect(lengthFnSpy).toHaveBeenCalledTimes(2)
+    expect(fnSpy).toHaveBeenCalledTimes(2)
+    observed.length = 0
+    expect(fnSpy).toHaveBeenCalledTimes(3)
+    expect(lengthFnSpy).toHaveBeenCalledTimes(3)
   })
 
   /**
@@ -251,42 +277,43 @@ describe('reactivity/effect', () => {
   //   expect(dummy).toBe(2)
   // })
 
-  // it('should observe iteration', () => {
-  //   let dummy
-  //   const list = reactive(['Hello'])
-  //   effect(() => (dummy = list.join(' ')))
+  // iteration: 迭代 （for in, for of）
+  it('should observe iteration', () => {
+    let dummy
+    const list = reactive(['Hello'])
+    effect(() => (dummy = list.join(' ')))
 
-  //   expect(dummy).toBe('Hello')
-  //   list.push('World!')
-  //   expect(dummy).toBe('Hello World!')
-  //   list.shift()
-  //   expect(dummy).toBe('World!')
-  // })
+    expect(dummy).toBe('Hello')
+    list.push('World!')
+    expect(dummy).toBe('Hello World!')
+    list.shift()
+    expect(dummy).toBe('World!')
+  })
 
-  // it('should observe implicit array length changes', () => {
-  //   let dummy
-  //   const list = reactive(['Hello'])
-  //   effect(() => (dummy = list.join(' ')))
+  it('should observe implicit array length changes', () => {
+    let dummy
+    const list = reactive(['Hello'])
+    effect(() => (dummy = list.join(' ')))
 
-  //   expect(dummy).toBe('Hello')
-  //   list[1] = 'World!'
-  //   expect(dummy).toBe('Hello World!')
-  //   list[3] = 'Hello!'
-  //   expect(dummy).toBe('Hello World!  Hello!')
-  // })
+    expect(dummy).toBe('Hello')
+    list[1] = 'World!'
+    expect(dummy).toBe('Hello World!')
+    list[3] = 'Hello!'
+    expect(dummy).toBe('Hello World!  Hello!')
+  })
 
-  // it('should observe sparse array mutations', () => {
-  //   let dummy
-  //   const list = reactive([])
-  //   list[1] = 'World!'
-  //   effect(() => (dummy = list.join(' ')))
+  it('should observe sparse array mutations', () => {
+    let dummy
+    const list = reactive([])
+    list[1] = 'World!'
+    effect(() => (dummy = list.join(' ')))
 
-  //   expect(dummy).toBe(' World!')
-  //   list[0] = 'Hello'
-  //   expect(dummy).toBe('Hello World!')
-  //   list.pop()
-  //   expect(dummy).toBe('Hello')
-  // })
+    expect(dummy).toBe(' World!')
+    list[0] = 'Hello'
+    expect(dummy).toBe('Hello World!')
+    list.pop()
+    expect(dummy).toBe('Hello')
+  })
 
   it('should observe enumeration', () => {
     let dummy = 0
@@ -322,18 +349,18 @@ describe('reactivity/effect', () => {
     expect(hasDummy).toBe(false)
   })
 
-  // it('should not observe well-known symbol keyed properties', () => {
-  //   const key = Symbol.isConcatSpreadable
-  //   let dummy
-  //   const array = reactive([])
-  //   effect(() => (dummy = array[key]))
+  it('should not observe well-known symbol keyed properties', () => {
+    const key = Symbol.isConcatSpreadable
+    let dummy
+    const array = reactive([])
+    effect(() => (dummy = array[key]))
 
-  //   expect(array[key]).toBe(undefined)
-  //   expect(dummy).toBe(undefined)
-  //   array[key] = true
-  //   expect(array[key]).toBe(true)
-  //   expect(dummy).toBe(undefined)
-  // })
+    expect(array[key]).toBe(undefined)
+    expect(dummy).toBe(undefined)
+    array[key] = true
+    expect(array[key]).toBe(true)
+    expect(dummy).toBe(undefined)
+  })
 
   // it('should observe function valued properties', () => {
   //   const oldFunc = () => {}
@@ -378,23 +405,23 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(2)
   })
 
-  // it('should not observe set operations without a value change', () => {
-  //   let hasDummy, getDummy
-  //   const obj = reactive({ prop: 'value' })
+  it('should not observe set operations without a value change', () => {
+    let hasDummy, getDummy
+    const obj = reactive({ prop: 'value' })
 
-  //   const getSpy = jest.fn(() => (getDummy = obj.prop))
-  //   const hasSpy = jest.fn(() => (hasDummy = 'prop' in obj))
-  //   effect(getSpy)
-  //   effect(hasSpy)
+    const getSpy = jest.fn(() => (getDummy = obj.prop))
+    const hasSpy = jest.fn(() => (hasDummy = 'prop' in obj))
+    effect(getSpy)
+    effect(hasSpy)
 
-  //   expect(getDummy).toBe('value')
-  //   expect(hasDummy).toBe(true)
-  //   obj.prop = 'value'
-  //   expect(getSpy).toHaveBeenCalledTimes(1)
-  //   expect(hasSpy).toHaveBeenCalledTimes(1)
-  //   expect(getDummy).toBe('value')
-  //   expect(hasDummy).toBe(true)
-  // })
+    expect(getDummy).toBe('value')
+    expect(hasDummy).toBe(true)
+    obj.prop = 'value'
+    expect(getSpy).toHaveBeenCalledTimes(1)
+    expect(hasSpy).toHaveBeenCalledTimes(1)
+    expect(getDummy).toBe('value')
+    expect(hasDummy).toBe(true)
+  })
 
   // it('should not observe raw mutations', () => {
   //   let dummy
@@ -438,40 +465,40 @@ describe('reactivity/effect', () => {
   //   expect(parentDummy).toBe(undefined)
   // })
 
-  // it('should avoid implicit infinite recursive loops with itself', () => {
-  //   const counter = reactive({ num: 0 })
+  it('should avoid implicit infinite recursive loops with itself', () => {
+    const counter = reactive({ num: 0 })
 
-  //   const counterSpy = jest.fn(() => counter.num++)
-  //   effect(counterSpy)
-  //   expect(counter.num).toBe(1)
-  //   expect(counterSpy).toHaveBeenCalledTimes(1)
-  //   counter.num = 4
-  //   expect(counter.num).toBe(5)
-  //   expect(counterSpy).toHaveBeenCalledTimes(2)
-  // })
+    const counterSpy = jest.fn(() => counter.num++)
+    effect(counterSpy)
+    expect(counter.num).toBe(1)
+    expect(counterSpy).toHaveBeenCalledTimes(1)
+    counter.num = 4
+    expect(counter.num).toBe(5)
+    expect(counterSpy).toHaveBeenCalledTimes(2)
+  })
 
-  // it('should avoid infinite recursive loops when use Array.prototype.push/unshift/pop/shift', () => {
-  //   ;(['push', 'unshift']).forEach(key => {
-  //     const arr = reactive([])
-  //     const counterSpy1 = jest.fn(() => (arr[key])(1))
-  //     const counterSpy2 = jest.fn(() => (arr[key])(2))
-  //     effect(counterSpy1)
-  //     effect(counterSpy2)
-  //     expect(arr.length).toBe(2)
-  //     expect(counterSpy1).toHaveBeenCalledTimes(1)
-  //     expect(counterSpy2).toHaveBeenCalledTimes(1)
-  //   })
-  //   ;(['pop', 'shift']).forEach(key => {
-  //     const arr = reactive([1, 2, 3, 4])
-  //     const counterSpy1 = jest.fn(() => (arr[key])())
-  //     const counterSpy2 = jest.fn(() => (arr[key])())
-  //     effect(counterSpy1)
-  //     effect(counterSpy2)
-  //     expect(arr.length).toBe(2)
-  //     expect(counterSpy1).toHaveBeenCalledTimes(1)
-  //     expect(counterSpy2).toHaveBeenCalledTimes(1)
-  //   })
-  // })
+  it('should avoid infinite recursive loops when use Array.prototype.push/unshift/pop/shift', () => {
+    ;(['push', 'unshift']).forEach(key => {
+      const arr = reactive([])
+      const counterSpy1 = jest.fn(() => (arr[key])(1))
+      const counterSpy2 = jest.fn(() => (arr[key])(2))
+      effect(counterSpy1)
+      effect(counterSpy2)
+      expect(arr.length).toBe(2)
+      expect(counterSpy1).toHaveBeenCalledTimes(1)
+      expect(counterSpy2).toHaveBeenCalledTimes(1)
+    })
+    ;(['pop', 'shift']).forEach(key => {
+      const arr = reactive([1, 2, 3, 4])
+      const counterSpy1 = jest.fn(() => (arr[key])())
+      const counterSpy2 = jest.fn(() => (arr[key])())
+      effect(counterSpy1)
+      effect(counterSpy2)
+      expect(arr.length).toBe(2)
+      expect(counterSpy1).toHaveBeenCalledTimes(1)
+      expect(counterSpy2).toHaveBeenCalledTimes(1)
+    })
+  })
 
   // it('should allow explicitly recursive raw function loops', () => {
   //   const counter = reactive({ num: 0 })
@@ -521,64 +548,64 @@ describe('reactivity/effect', () => {
   //   expect(effect1).not.toBe(effect2)
   // })
 
-  // it('should discover new branches while running automatically', () => {
-  //   let dummy
-  //   const obj = reactive({ prop: 'value', run: false })
+  it('should discover new branches while running automatically', () => {
+    let dummy
+    const obj = reactive({ prop: 'value', run: false })
 
-  //   const conditionalSpy = jest.fn(() => {
-  //     dummy = obj.run ? obj.prop : 'other'
-  //   })
-  //   effect(conditionalSpy)
+    const conditionalSpy = jest.fn(() => {
+      dummy = obj.run ? obj.prop : 'other'
+    })
+    effect(conditionalSpy)
 
-  //   expect(dummy).toBe('other')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(1)
-  //   obj.prop = 'Hi'
-  //   expect(dummy).toBe('other')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(1)
-  //   obj.run = true
-  //   expect(dummy).toBe('Hi')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(2)
-  //   obj.prop = 'World'
-  //   expect(dummy).toBe('World')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(3)
-  // })
+    expect(dummy).toBe('other')
+    expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    obj.prop = 'Hi'
+    expect(dummy).toBe('other')
+    expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    obj.run = true
+    expect(dummy).toBe('Hi')
+    expect(conditionalSpy).toHaveBeenCalledTimes(2)
+    obj.prop = 'World'
+    expect(dummy).toBe('World')
+    expect(conditionalSpy).toHaveBeenCalledTimes(3)
+  })
 
-  // it('should discover new branches when running manually', () => {
-  //   let dummy
-  //   let run = false
-  //   const obj = reactive({ prop: 'value' })
-  //   const runner = effect(() => {
-  //     dummy = run ? obj.prop : 'other'
-  //   })
+  it('should discover new branches when running manually', () => {
+    let dummy
+    let run = false
+    const obj = reactive({ prop: 'value' })
+    const runner = effect(() => {
+      dummy = run ? obj.prop : 'other'
+    })
 
-  //   expect(dummy).toBe('other')
-  //   runner()
-  //   expect(dummy).toBe('other')
-  //   run = true
-  //   runner()
-  //   expect(dummy).toBe('value')
-  //   obj.prop = 'World'
-  //   expect(dummy).toBe('World')
-  // })
+    expect(dummy).toBe('other')
+    runner()
+    expect(dummy).toBe('other')
+    run = true
+    runner()
+    expect(dummy).toBe('value')
+    obj.prop = 'World'
+    expect(dummy).toBe('World')
+  })
 
-  // it('should not be triggered by mutating a property, which is used in an inactive branch', () => {
-  //   let dummy
-  //   const obj = reactive({ prop: 'value', run: true })
+  it('should not be triggered by mutating a property, which is used in an inactive branch', () => {
+    let dummy
+    const obj = reactive({ prop: 'value', run: true })
 
-  //   const conditionalSpy = jest.fn(() => {
-  //     dummy = obj.run ? obj.prop : 'other'
-  //   })
-  //   effect(conditionalSpy)
+    const conditionalSpy = jest.fn(() => {
+      dummy = obj.run ? obj.prop : 'other'
+    })
+    effect(conditionalSpy)
 
-  //   expect(dummy).toBe('value')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(1)
-  //   obj.run = false
-  //   expect(dummy).toBe('other')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(2)
-  //   obj.prop = 'value2'
-  //   expect(dummy).toBe('other')
-  //   expect(conditionalSpy).toHaveBeenCalledTimes(2)
-  // })
+    expect(dummy).toBe('value')
+    expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    obj.run = false
+    expect(dummy).toBe('other')
+    expect(conditionalSpy).toHaveBeenCalledTimes(2)
+    obj.prop = 'value2'
+    expect(dummy).toBe('other')
+    expect(conditionalSpy).toHaveBeenCalledTimes(2)
+  })
 
   // it('should handle deep effect recursion using cleanup fallback', () => {
   //   const results = reactive([0])
@@ -677,22 +704,22 @@ describe('reactivity/effect', () => {
   //   expect(runner.effect.fn).toBe(otherRunner.effect.fn)
   // })
 
-  // it('should not run multiple times for a single mutation', () => {
-  //   let dummy
-  //   const obj = reactive({})
-  //   const fnSpy = jest.fn(() => {
-  //     for (const key in obj) {
-  //       dummy = obj[key]
-  //     }
-  //     dummy = obj.prop
-  //   })
-  //   effect(fnSpy)
+  it('should not run multiple times for a single mutation', () => {
+    let dummy
+    const obj = reactive({})
+    const fnSpy = jest.fn(() => {
+      for (const key in obj) {
+        dummy = obj[key]
+      }
+      dummy = obj.prop
+    })
+    effect(fnSpy)
 
-  //   expect(fnSpy).toHaveBeenCalledTimes(1)
-  //   obj.prop = 16
-  //   expect(dummy).toBe(16)
-  //   expect(fnSpy).toHaveBeenCalledTimes(2)
-  // })
+    expect(fnSpy).toHaveBeenCalledTimes(1)
+    obj.prop = 16
+    expect(dummy).toBe(16)
+    expect(fnSpy).toHaveBeenCalledTimes(2)
+  })
 
   it('should allow nested effects', () => {
     const nums = reactive({ num1: 0, num2: 1, num3: 2 })
@@ -940,39 +967,39 @@ describe('reactivity/effect', () => {
   //   expect(dummy).toBe(1)
   // })
 
-  // it('should not be triggered when the value and the old value both are NaN', () => {
-  //   const obj = reactive({
-  //     foo: NaN
-  //   })
-  //   const fnSpy = jest.fn(() => obj.foo)
-  //   effect(fnSpy)
-  //   obj.foo = NaN
-  //   expect(fnSpy).toHaveBeenCalledTimes(1)
-  // })
+  it('should not be triggered when the value and the old value both are NaN', () => {
+    const obj = reactive({
+      foo: NaN
+    })
+    const fnSpy = jest.fn(() => obj.foo)
+    effect(fnSpy)
+    obj.foo = NaN
+    expect(fnSpy).toHaveBeenCalledTimes(1)
+  })
 
-  // it('should trigger all effects when array length is set to 0', () => {
-  //   const observed = reactive([1])
-  //   let dummy, record
-  //   effect(() => {
-  //     dummy = observed.length
-  //   })
-  //   effect(() => {
-  //     record = observed[0]
-  //   })
-  //   expect(dummy).toBe(1)
-  //   expect(record).toBe(1)
+  it('should trigger all effects when array length is set to 0', () => {
+    const observed = reactive([1])
+    let dummy, record
+    effect(() => {
+      dummy = observed.length
+    })
+    effect(() => {
+      record = observed[0]
+    })
+    expect(dummy).toBe(1)
+    expect(record).toBe(1)
 
-  //   observed[1] = 2
-  //   expect(observed[1]).toBe(2)
+    observed[1] = 2
+    expect(observed[1]).toBe(2)
 
-  //   observed.unshift(3)
-  //   expect(dummy).toBe(3)
-  //   expect(record).toBe(3)
+    observed.unshift(3)
+    expect(dummy).toBe(3)
+    expect(record).toBe(3)
 
-  //   observed.length = 0
-  //   expect(dummy).toBe(0)
-  //   expect(record).toBeUndefined()
-  // })
+    observed.length = 0
+    expect(dummy).toBe(0)
+    expect(record).toBeUndefined()
+  })
 
   // it('should not be triggered when set with the same proxy', () => {
   //   const obj = reactive({ foo: 1 })
