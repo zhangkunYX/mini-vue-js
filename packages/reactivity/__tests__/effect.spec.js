@@ -7,8 +7,8 @@ import {
   // TriggerOpTypes,
   // DebuggerEvent,
   // markRaw,
-  // shallowReactive,
-  // readonly,
+  shallowReactive,
+  readonly,
   // ReactiveEffectRunner
 } from '../src/index'
 import {jobQueue, flushJob} from '../src/scheduler'
@@ -98,19 +98,59 @@ describe('reactivity/effect', () => {
     counter.num = 3
   })
 
+  it('should not be triggered when shallowReactive', () => {
+    const observed = reactive({ obj: { foo: 1 } })
+    const fnSpy = jest.fn(() => observed.obj.foo)
+
+    effect(fnSpy)
+
+    expect(fnSpy).toHaveBeenCalledTimes(1)
+    observed.obj.foo = 2
+    expect(fnSpy).toHaveBeenCalledTimes(2)
+
+    const observed2 = shallowReactive({ obj2: { foo: 1 } })
+    const fnSpy2 = jest.fn(() => observed2.obj2.foo)
+
+    effect(fnSpy2)
+
+    expect(fnSpy2).toHaveBeenCalledTimes(1)
+    observed2.obj2.foo = 2
+    expect(fnSpy2).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not be triggered when set/get array by index', () => {
+    const observed = reactive(['foo'])
+    const fnSpy = jest.fn(() => observed[0])
+    const lengthFnSpy = jest.fn(() => observed.length)
+
+    effect(fnSpy)
+    expect(fnSpy).toHaveBeenCalledTimes(1)
+    observed[0] = 'foo1'
+    expect(fnSpy).toHaveBeenCalledTimes(2)
+
+    effect(lengthFnSpy)
+    expect(lengthFnSpy).toHaveBeenCalledTimes(1)
+    observed[1] = 'foo2'
+    expect(lengthFnSpy).toHaveBeenCalledTimes(2)
+
+    observed.length = 0
+    expect(lengthFnSpy).toHaveBeenCalledTimes(3)
+    expect(fnSpy).toHaveBeenCalledTimes(3)
+  })
+
   /**
    * 补充测试用例 end
    */
 
-  // it('should observe nested properties', () => {
-  //   let dummy
-  //   const counter = reactive({ nested: { num: 0 } })
-  //   effect(() => (dummy = counter.nested.num))
+  it('should observe nested properties', () => {
+    let dummy
+    const counter = reactive({ nested: { num: 0 } })
+    effect(() => (dummy = counter.nested.num))
 
-  //   expect(dummy).toBe(0)
-  //   counter.nested.num = 8
-  //   expect(dummy).toBe(8)
-  // })
+    expect(dummy).toBe(0)
+    counter.nested.num = 8
+    expect(dummy).toBe(8)
+  })
 
   it('should observe delete operations', () => {
     let dummy
@@ -265,22 +305,22 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(4)
   })
 
-  // it('should observe symbol keyed properties', () => {
-  //   const key = Symbol('symbol keyed prop')
-  //   let dummy, hasDummy
-  //   const obj = reactive({ [key]: 'value' })
-  //   effect(() => (dummy = obj[key]))
-  //   effect(() => (hasDummy = key in obj))
+  it('should observe symbol keyed properties', () => {
+    const key = Symbol('symbol keyed prop')
+    let dummy, hasDummy
+    const obj = reactive({ [key]: 'value' })
+    effect(() => (dummy = obj[key]))
+    effect(() => (hasDummy = key in obj))
 
-  //   expect(dummy).toBe('value')
-  //   expect(hasDummy).toBe(true)
-  //   obj[key] = 'newValue'
-  //   expect(dummy).toBe('newValue')
-  //   // @ts-ignore
-  //   delete obj[key]
-  //   expect(dummy).toBe(undefined)
-  //   expect(hasDummy).toBe(false)
-  // })
+    expect(dummy).toBe('value')
+    expect(hasDummy).toBe(true)
+    obj[key] = 'newValue'
+    expect(dummy).toBe('newValue')
+    // @ts-ignore
+    delete obj[key]
+    expect(dummy).toBe(undefined)
+    expect(hasDummy).toBe(false)
+  })
 
   // it('should not observe well-known symbol keyed properties', () => {
   //   const key = Symbol.isConcatSpreadable
@@ -323,20 +363,20 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(2)
   })
 
-  // it('should observe methods relying on this', () => {
-  //   const obj = reactive({
-  //     a: 1,
-  //     b() {
-  //       return this.a
-  //     }
-  //   })
+  it('should observe methods relying on this', () => {
+    const obj = reactive({
+      a: 1,
+      b() {
+        return this.a
+      }
+    })
 
-  //   let dummy
-  //   effect(() => (dummy = obj.b()))
-  //   expect(dummy).toBe(1)
-  //   obj.a++
-  //   expect(dummy).toBe(2)
-  // })
+    let dummy
+    effect(() => (dummy = obj.b()))
+    expect(dummy).toBe(1)
+    obj.a++
+    expect(dummy).toBe(2)
+  })
 
   // it('should not observe set operations without a value change', () => {
   //   let hasDummy, getDummy

@@ -43,9 +43,10 @@ export const track = function(target, key) {
   activeEffect.deps.push(deps)
 }
 
-export const trigger = function(target, key, type) {
+export const trigger = function(target, key, type, newValue) {
   let depsMap = bucket.get(target)
   if(!depsMap) return
+
   let effects = depsMap.get(key)
   // effects && effects.forEach(fn => fn()) // 导致无限循环,同时在清除和添加effect
   const effectsToRun = new Set()
@@ -53,6 +54,23 @@ export const trigger = function(target, key, type) {
   effects && effects.forEach(effect => {
     if (effect !== activeEffect) effectsToRun.add(effect)
   })
+
+  if (Array.isArray(target) && key === 'length') {
+    depsMap.forEach((effects, key) => {
+      if (key >= newValue) {
+        effects.forEach(effectFn => {
+          if (effectFn !== activeEffect) effectsToRun.add(effectFn)
+        })
+      }
+    })
+  }
+
+  if (type === 'ADD' && Array.isArray(target)) {
+    let lengthEffects = depsMap.get('length')
+    lengthEffects && lengthEffects.forEach(effect => {
+      if (effect !== activeEffect) effectsToRun.add(effect)
+    })
+  }
 
   if (type === 'ADD' || type === 'DELETE') {
     // 取得与ITERATE_KEY相关联的副作用函数(当给对象新增或者删除属性时，应该触发for in遍历)
@@ -71,19 +89,32 @@ export const trigger = function(target, key, type) {
   })
 }
 
-export const reactive = (obj) => {
-  const result = new Proxy(obj, {
+export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
+  return new Proxy(obj, {
     get(target, key, recevier) {
       if (key === 'raw') {
         return target
       }
-      track(target, key)
+      if (!isReadonly) track(target, key)
       // return target[key]
-      return Reflect.get(target, key, recevier)
+      const res = Reflect.get(target, key, recevier)
+      if (isShallow) {
+        return res
+      }
+      if (typeof(res) === 'object' && res !== null) {
+        return isReadonly ? readonly(res) : reactive(res)
+      }
+      return res
     },
     set(target, key, value, recevier) {
+      if (isReadonly) {
+        console.warn(`属性${key}是只读的`)
+        return true
+      }
       const oldVal = target[key]
-      const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD'
+      const type = Array.isArray(target) 
+      ? Number(key) < target.length ? 'SET' : 'ADD'
+      : Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD'
       // target[key] = value
       const res = Reflect.set(target, key, value, recevier)
 
@@ -91,7 +122,7 @@ export const reactive = (obj) => {
       if (target === recevier.raw) {
         // 排除oldValue和value为NaN的情况，因为 NaN === NaN 为false
         if (oldVal !== value && oldVal === oldVal || value === value) {
-          trigger(target, key, type)
+          trigger(target, key, type, value)
         }
       }
       return res
@@ -108,6 +139,10 @@ export const reactive = (obj) => {
     },
     // 用于拦截删除属性操作
     deleteProperty(target, key) {
+      if (isReadonly) {
+        console.warn(`属性${key}是只读的`)
+        return true
+      }
       const hasKey = Object.prototype.hasOwnProperty.call(target, key)
       const res = Reflect.deleteProperty(target, key)
       // const res = delete target[key]
@@ -117,5 +152,20 @@ export const reactive = (obj) => {
       return res
     }
   })
-  return result
+}
+
+export const reactive = function(target) {
+  return creatReactive(target)
+}
+
+export const shallowReactive = function(target) {
+  return creatReactive(target, true)
+}
+
+export const readonly = function(target) {
+  return creatReactive(target, false, true)
+}
+
+export const shallowReadonly = function(target) {
+  return creatReactive(target, true, true)
 }

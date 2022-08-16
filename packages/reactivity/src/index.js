@@ -1,4 +1,4 @@
-import { effect, reactive, ITERATE_KEY } from "./effect";
+import { effect, reactive, shallowReactive, readonly, shallowReadonly, ITERATE_KEY } from "./effect";
 import { computed } from "./computed";
 import { watch } from "./watch";
 export {
@@ -6,5 +6,8 @@ export {
   effect,
   reactive,
   computed,
-  watch
+  watch,
+  shallowReactive,
+  readonly,
+  shallowReadonly
 }
