@@ -72,9 +72,23 @@ export const trigger = function(target, key, type, newValue) {
     })
   }
 
-  if (type === 'ADD' || type === 'DELETE') {
+  if (
+    type === 'ADD' || 
+    type === 'DELETE' ||
+    (type === 'SET' && Object.prototype.toString.call(target) === '[object Map]')
+  ) {
     // 取得与ITERATE_KEY相关联的副作用函数(当给对象新增或者删除属性时，应该触发for in遍历)
     let iterateEffects = depsMap.get(ITERATE_KEY)
+    iterateEffects && iterateEffects.forEach(effect => {
+      if (effect !== activeEffect) effectsToRun.add(effect)
+    })
+  }
+
+  if (
+    (type === 'ADD' || type === 'DELETE') &&
+    Object.prototype.toString.call(target) === '[object Map]'
+  ) {
+    let iterateEffects = depsMap.get(MAP_KEY_ITERATE_KEY)
     iterateEffects && iterateEffects.forEach(effect => {
       if (effect !== activeEffect) effectsToRun.add(effect)
     })
@@ -161,6 +175,136 @@ export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
   })
 }
 
+const mutableInstrumenations = {
+  add(key) {
+    const target = this.raw
+    const has = target.has(key)
+    const res = target.add(key)
+    if (!has) {
+      trigger(target, ITERATE_KEY, 'ADD')
+    }
+    return res
+  },
+  delete(key) {
+    const target = this.raw
+    const has = target.has(key)
+    const res = target.delete(key)
+    if (has) {
+      trigger(target, ITERATE_KEY, 'DELETE')
+    }
+    return res
+  },
+  get(key) {
+    const target = this.raw
+    const has = target.has(key)
+    const res = target.get(key)
+    if (has) {
+      track(target, key)
+      return typeof res === 'object' ? reactive(res) : res
+    }
+  },
+  set(key, value) {
+    const target = this.raw
+    const has = target.has(key)
+    const oldVal = target.get(key)
+    const rawValue = value.raw ? value.raw : value
+    target.set(key, rawValue)
+    if (!has) {
+      trigger(target, key, 'ADD')
+    } else if (oldVal !== value || (oldVal === oldVal && value === value)) {
+      trigger(target, key, 'SET')
+    }
+  },
+  forEach(callback, thisArg) {
+    const target = this.raw
+    const wrap = val => typeof(val) === 'object' ? reactive(val) : val
+    track(target, ITERATE_KEY)
+    target.forEach((value, key) => {
+      callback.call(thisArg, wrap(value), wrap(key), this)
+    })
+  },
+  [Symbol.iterator]: iterationMethod,
+  entries: iterationMethod,
+  values: valuesIterationMethod,
+  keys: keysIterationMethod
+}
+
+function iterationMethod() {
+  const target = this.raw
+  const itr = target[Symbol.iterator]()
+
+  const wrap = val => typeof(val) === 'object' ? reactive(val) : val
+  track(target, ITERATE_KEY)
+  return {
+    next() {
+      const {value, done} = itr.next()
+      return {
+        value: value ? [wrap[0], wrap[1]] : value,
+        done
+      }
+    },
+    [Symbol.iterator]() {
+      return this
+    }
+  }
+}
+
+function valuesIterationMethod() {
+  const target = this.raw
+  const itr = target.values()
+
+  const wrap = val => typeof(val) === 'object' ? reactive(val) : val
+  track(target, ITERATE_KEY)
+  return {
+    next() {
+      const {value, done} = itr.next()
+      return {
+        value: value ? wrap(value) : value,
+        done
+      }
+    },
+    [Symbol.iterator]() {
+      return this
+    }
+  }
+}
+
+const MAP_KEY_ITERATE_KEY = Symbol()
+
+function keysIterationMethod() {
+  const target = this.raw
+  const itr = target.keys()
+
+  const wrap = val => typeof(val) === 'object' ? reactive(val) : val
+  track(target, MAP_KEY_ITERATE_KEY)
+  return {
+    next() {
+      const {value, done} = itr.next()
+      return {
+        value: value ? wrap(value) : value,
+        done
+      }
+    },
+    [Symbol.iterator]() {
+      return this
+    }
+  }
+}
+
+// 对Set, Map数据类型左响应式
+const creatMapReactive = function(target, isShallow = false, readonly = false) {
+  return new Proxy(target, {
+    get(target, key, recevier) {
+      if (key === 'raw') return target
+      if (key === 'size') {
+        track(target, ITERATE_KEY)
+        return Reflect.get(target, key, target)
+      }
+      return mutableInstrumenations[key]
+    }
+  })
+}
+
 
 const arrayInstrumentations = {
   
@@ -203,7 +347,11 @@ export const reactive = function(target) {
   const existProxy = reactiveMap.get(target)
   if (existProxy) return existProxy
 
-  const proxy = creatReactive(target)
+  const typeCheck = Object.prototype.toString
+  const isSet = typeCheck.call(target) === '[object Set]'
+  const isMap = typeCheck.call(target) === '[object Map]'
+
+  const proxy = isSet || isMap ? creatMapReactive(target) : creatReactive(target)
   reactiveMap.set(target, proxy)
   return proxy
 }
