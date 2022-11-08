@@ -1,8 +1,9 @@
-let jobQueue = new Set()
+export let jobQueue = new Set()
 let isFlushing = false
 const p = Promise.resolve()
 
-exports.flushJob = function () {
+export function flushJob(job) {
+  jobQueue.add(job)
   if (isFlushing) return
   isFlushing = true
   p.then(() => {
@@ -11,5 +12,3 @@ exports.flushJob = function () {
     isFlushing = false
   })
 }
-
-exports.jobQueue = jobQueue

@@ -1,3 +1,5 @@
+import { reactive, effect, shallowReactive } from '../../effect'
+import { flushJob } from '../../scheduler'
 const operations = {
   creatElement(tag) {
     return document.createElement(tag)
@@ -113,11 +115,139 @@ const createRenderer = function(options) {
       } else {
         patchChildren(oldNode, newNode, container)
       }
+    // const MyComponent = {
+    //   name: 'MyComponent',
+    //   props: {
+    //     title: String
+    //   },
+    //   data() {
+    //     return {
+    //       foo: 'hello world'
+    //     }
+    //   },
+    //   render() {
+    //     return {
+    //       type: 'div',
+    //       children: `foo 的值是: ${this.foo + this.title}`
+    //     }
+    //   }
+    // }
+    // const comNode = {
+    //   props: {
+    //     title: '这是标题内容'
+    //   },
+    //   type: MyComponent
+    // }
     } else if (typeof(newNode.type) === 'object') {
       // todo 组件
-    } else {
-      // todo 其他类型，如fragment
+      if (!oldNode) {
+        mountComponent(newNode, container, anchor)
+      } else {
+        patchComponent(oldNode, newNode, anchor)
+      }
     }
+  }
+
+  function patchComponent(o, n, anchor) {
+    const instance = (n.component = o.component)
+
+    const { props } = instance
+    if (hasPropsChange(o.props, n.props)) { // 虚拟节点的props（包括所有的属性，事件等数据）
+      const [ nextProps ] = resolveProps(n.type.props /** 组件配置项中的props */, n.props)
+      for (const k in nextProps) {
+        props[k] = nextProps[k]
+      }
+      for (const k in props) {
+        if (!(k in nextProps)) delete props[k]
+      }
+    }
+  }
+
+  function hasPropsChange(prevProps, nextProps) {
+    const nextKeys = Object.keys(nextProps)
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+      return true
+    }
+    for (let i = 0; i < nextKeys.length; i++) {
+      const key = nextKeys[i]
+      if (nextProps[key] !== prevProps[key]) return true
+    }
+    return false
+  }
+
+  function resolveProps(options, propsData) {
+    const props = {}
+    const attrs = {}
+    for (const key in propsData) {
+      if (key in options) {
+        props[key] = propsData[k]
+      } else {
+        attrs[key] = propsData[k]
+      }
+    }
+    return [ props, attrs ]
+  }
+
+  function mountComponent(vnode, container, anchor) {
+    const componentConfigs = vnode.type
+    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propConfigs } = componentConfigs
+    const [ props, attrs ] = resolveProps(propConfigs, vnode.props)
+
+    beforeCreate && beforeCreate()
+
+    const state = reactive(data())
+
+    const instance = {
+      state,
+      isMounted: false,
+      subNode: null,
+      props: shallowReactive(props),
+      attrs
+    }
+
+    vnode.component = instance
+    
+    const renderContext = new Proxy(instance, {
+      get(t, k, r) {
+        const { state, props } = t
+        if (state && key in state) {
+          return state[key]
+        } else if (key in props) {
+          return props[key]
+        } else {
+          console.error('not exist')
+        }
+      },
+      set(t, k, v, r) {
+        const { state, props } = t
+        if (state && key in state) {
+          state[key] = v
+        } else if (key in props) {
+          console.error(`Attemping to mutate prop ${k}. Props are readonly.`)
+        } else {
+          console.error('not exist')
+        }
+      }
+    })
+
+    created && created.call(renderContext)
+
+    effect(() => {
+      const subNode = render.call(renderContext, renderContext)
+      if (!instance.isMounted) {
+        beforeMount && beforeMount.call(renderContext)
+        patch(null, subNode, container, anchor)
+        instance.isMounted = true
+        mounted && mounted.call(renderContext)
+      } else {
+        beforeUpdate && beforeUpdate.call(renderContext)
+        patchComponent(instance.subNode, subNode, container, anchor)
+        updated && updated.call(renderContext)
+      }
+      instance.subNode = subNode
+    }, {
+      scheduler: flushJob
+    })
   }
 
   function patchElement(oldNode, newNode) {
