@@ -21,5 +21,8 @@ export const computed = function (getter) {
       return val
     }
   }
+  Object.defineProperty(obj, '__v_isRef', {
+    value: true
+  })
   return obj
 }

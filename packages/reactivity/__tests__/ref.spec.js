@@ -4,12 +4,12 @@ import {
   reactive,
   isRef,
   toRef,
-  toRefs,
-  Ref,
-  isReactive
+  toRefs
+  // Ref
+  // isReactive
 } from '../src/index'
-import { computed } from '@vue/runtime-dom'
-import { shallowRef, unref, customRef, triggerRef } from '../src/ref'
+import { computed } from '../src/index'
+// import { shallowRef, unref, customRef, triggerRef } from '../src/ref'
 
 describe('reactivity/ref', () => {
   it('should hold a value', () => {
@@ -71,15 +71,15 @@ describe('reactivity/ref', () => {
       }
     })
 
-    let dummy1: number
-    let dummy2: number
+    let dummy1
+    let dummy2
 
     effect(() => {
       dummy1 = obj.a
       dummy2 = obj.b.c
     })
 
-    const assertDummiesEqualTo = (val: number) =>
+    const assertDummiesEqualTo = (val) =>
       [dummy1, dummy2].forEach(dummy => expect(dummy).toBe(val))
 
     assertDummiesEqualTo(1)
@@ -112,24 +112,24 @@ describe('reactivity/ref', () => {
     const arr = ref([1, ref(3)]).value
     expect(isRef(arr[0])).toBe(false)
     expect(isRef(arr[1])).toBe(true)
-    expect((arr[1] as Ref).value).toBe(3)
+    expect(arr[1].value).toBe(3)
   })
 
   it('should unwrap ref types as props of arrays', () => {
     const arr = [ref(0)]
     const symbolKey = Symbol('')
-    arr['' as any] = ref(1)
-    arr[symbolKey as any] = ref(2)
+    arr[''] = ref(1)
+    arr[symbolKey] = ref(2)
     const arrRef = ref(arr).value
     expect(isRef(arrRef[0])).toBe(true)
-    expect(isRef(arrRef['' as any])).toBe(false)
-    expect(isRef(arrRef[symbolKey as any])).toBe(false)
-    expect(arrRef['' as any]).toBe(1)
-    expect(arrRef[symbolKey as any]).toBe(2)
+    expect(isRef(arrRef[''])).toBe(false)
+    expect(isRef(arrRef[symbolKey])).toBe(false)
+    expect(arrRef['']).toBe(1)
+    expect(arrRef[symbolKey]).toBe(2)
   })
 
   it('should keep tuple types', () => {
-    const tuple: [number, string, { a: number }, () => number, Ref<number>] = [
+    const tuple = [
       0,
       '1',
       { a: 1 },
@@ -156,21 +156,21 @@ describe('reactivity/ref', () => {
       [Symbol.hasInstance]: { a: ref('a') },
       [Symbol.isConcatSpreadable]: { b: ref(true) },
       [Symbol.iterator]: [ref(1)],
-      [Symbol.match]: new Set<Ref<number>>(),
-      [Symbol.matchAll]: new Map<number, Ref<string>>(),
+      [Symbol.match]: new Set(),
+      [Symbol.matchAll]: new Map(),
       [Symbol.replace]: { arr: [ref('a')] },
-      [Symbol.search]: { set: new Set<Ref<number>>() },
-      [Symbol.species]: { map: new Map<number, Ref<string>>() },
-      [Symbol.split]: new WeakSet<Ref<boolean>>(),
-      [Symbol.toPrimitive]: new WeakMap<Ref<boolean>, string>(),
-      [Symbol.toStringTag]: { weakSet: new WeakSet<Ref<boolean>>() },
-      [Symbol.unscopables]: { weakMap: new WeakMap<Ref<boolean>, string>() },
+      [Symbol.search]: { set: new Set() },
+      [Symbol.species]: { map: new Map() },
+      [Symbol.split]: new WeakSet(),
+      [Symbol.toPrimitive]: new WeakMap(),
+      [Symbol.toStringTag]: { weakSet: new WeakSet() },
+      [Symbol.unscopables]: { weakMap: new WeakMap() },
       [customSymbol]: { arr: [ref(1)] }
     }
 
     const objRef = ref(obj)
 
-    const keys: (keyof typeof obj)[] = [
+    const keys = [
       Symbol.asyncIterator,
       Symbol.hasInstance,
       Symbol.isConcatSpreadable,
@@ -192,41 +192,41 @@ describe('reactivity/ref', () => {
     })
   })
 
-  test('unref', () => {
-    expect(unref(1)).toBe(1)
-    expect(unref(ref(1))).toBe(1)
-  })
+  // test('unref', () => {
+  //   expect(unref(1)).toBe(1)
+  //   expect(unref(ref(1))).toBe(1)
+  // })
 
-  test('shallowRef', () => {
-    const sref = shallowRef({ a: 1 })
-    expect(isReactive(sref.value)).toBe(false)
+  // test('shallowRef', () => {
+  //   const sref = shallowRef({ a: 1 })
+  //   expect(isReactive(sref.value)).toBe(false)
 
-    let dummy
-    effect(() => {
-      dummy = sref.value.a
-    })
-    expect(dummy).toBe(1)
+  //   let dummy
+  //   effect(() => {
+  //     dummy = sref.value.a
+  //   })
+  //   expect(dummy).toBe(1)
 
-    sref.value = { a: 2 }
-    expect(isReactive(sref.value)).toBe(false)
-    expect(dummy).toBe(2)
-  })
+  //   sref.value = { a: 2 }
+  //   expect(isReactive(sref.value)).toBe(false)
+  //   expect(dummy).toBe(2)
+  // })
 
-  test('shallowRef force trigger', () => {
-    const sref = shallowRef({ a: 1 })
-    let dummy
-    effect(() => {
-      dummy = sref.value.a
-    })
-    expect(dummy).toBe(1)
+  // test('shallowRef force trigger', () => {
+  //   const sref = shallowRef({ a: 1 })
+  //   let dummy
+  //   effect(() => {
+  //     dummy = sref.value.a
+  //   })
+  //   expect(dummy).toBe(1)
 
-    sref.value.a = 2
-    expect(dummy).toBe(1) // should not trigger yet
+  //   sref.value.a = 2
+  //   expect(dummy).toBe(1) // should not trigger yet
 
-    // force trigger
-    triggerRef(sref)
-    expect(dummy).toBe(2)
-  })
+  //   // force trigger
+  //   triggerRef(sref)
+  //   expect(dummy).toBe(2)
+  // })
 
   test('isRef', () => {
     expect(isRef(ref(1))).toBe(true)
@@ -334,54 +334,54 @@ describe('reactivity/ref', () => {
     expect(refs[1].value).toBe('2')
   })
 
-  test('customRef', () => {
-    let value = 1
-    let _trigger: () => void
+  // test('customRef', () => {
+  //   let value = 1
+  //   let _trigger
 
-    const custom = customRef((track, trigger) => ({
-      get() {
-        track()
-        return value
-      },
-      set(newValue: number) {
-        value = newValue
-        _trigger = trigger
-      }
-    }))
+  //   const custom = customRef((track, trigger) => ({
+  //     get() {
+  //       track()
+  //       return value
+  //     },
+  //     set(newValue) {
+  //       value = newValue
+  //       _trigger = trigger
+  //     }
+  //   }))
 
-    expect(isRef(custom)).toBe(true)
+  //   expect(isRef(custom)).toBe(true)
 
-    let dummy
-    effect(() => {
-      dummy = custom.value
-    })
-    expect(dummy).toBe(1)
+  //   let dummy
+  //   effect(() => {
+  //     dummy = custom.value
+  //   })
+  //   expect(dummy).toBe(1)
 
-    custom.value = 2
-    // should not trigger yet
-    expect(dummy).toBe(1)
+  //   custom.value = 2
+  //   // should not trigger yet
+  //   expect(dummy).toBe(1)
 
-    _trigger!()
-    expect(dummy).toBe(2)
-  })
+  //   _trigger()
+  //   expect(dummy).toBe(2)
+  // })
 
-  test('should not trigger when setting value to same proxy', () => {
-    const obj = reactive({ count: 0 })
+  // test('should not trigger when setting value to same proxy', () => {
+  //   const obj = reactive({ count: 0 })
 
-    const a = ref(obj)
-    const spy1 = jest.fn(() => a.value)
+  //   const a = ref(obj)
+  //   const spy1 = jest.fn(() => a.value)
 
-    effect(spy1)
+  //   effect(spy1)
 
-    a.value = obj
-    expect(spy1).toBeCalledTimes(1)
+  //   a.value = obj
+  //   expect(spy1).toBeCalledTimes(1)
 
-    const b = shallowRef(obj)
-    const spy2 = jest.fn(() => b.value)
+  //   const b = shallowRef(obj)
+  //   const spy2 = jest.fn(() => b.value)
 
-    effect(spy2)
+  //   effect(spy2)
 
-    b.value = obj
-    expect(spy2).toBeCalledTimes(1)
-  })
+  //   b.value = obj
+  //   expect(spy2).toBeCalledTimes(1)
+  // })
 })

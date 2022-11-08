@@ -1,7 +1,7 @@
 export const ITERATE_KEY = Symbol()
 
 let activeEffect
-let bucket = new WeakMap() // weakmap的key时弱引用，能够被垃圾回收器回收
+let bucket = new WeakMap() // weakmap的key是弱引用，能够被垃圾回收器回收
 const effectStack = []
 export const effect = (fn, options = {}) => {
   // activeEffect = fn
@@ -140,7 +140,7 @@ export const creatReactive = (obj, isShallow = false, isReadonly = false) => {
       // fix：从原型上读取属性，设置会属性导致副作用重复执行问题
       if (target === recevier.raw) {
         // 排除oldValue和value为NaN的情况，因为 NaN === NaN 为false
-        if (oldVal !== value && oldVal === oldVal || value === value) {
+        if (oldVal !== value && (oldVal === oldVal || value === value)) {
           trigger(target, key, type, value)
         }
       }

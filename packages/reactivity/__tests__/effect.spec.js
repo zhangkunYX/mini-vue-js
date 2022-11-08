@@ -407,23 +407,23 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(2)
   })
 
-  // it('should not observe set operations without a value change', () => {
-  //   let hasDummy, getDummy
-  //   const obj = reactive({ prop: 'value' })
+  it('should not observe set operations without a value change', () => {
+    let hasDummy, getDummy
+    const obj = reactive({ prop: 'value' })
 
-  //   const getSpy = jest.fn(() => (getDummy = obj.prop))
-  //   const hasSpy = jest.fn(() => (hasDummy = 'prop' in obj))
-  //   effect(getSpy)
-  //   effect(hasSpy)
+    const getSpy = jest.fn(() => (getDummy = obj.prop))
+    const hasSpy = jest.fn(() => (hasDummy = 'prop' in obj))
+    effect(getSpy)
+    effect(hasSpy)
 
-  //   expect(getDummy).toBe('value')
-  //   expect(hasDummy).toBe(true)
-  //   obj.prop = 'value'
-  //   expect(getSpy).toHaveBeenCalledTimes(1)
-  //   expect(hasSpy).toHaveBeenCalledTimes(1)
-  //   expect(getDummy).toBe('value')
-  //   expect(hasDummy).toBe(true)
-  // })
+    expect(getDummy).toBe('value')
+    expect(hasDummy).toBe(true)
+    obj.prop = 'value'
+    expect(getSpy).toHaveBeenCalledTimes(1)
+    expect(hasSpy).toHaveBeenCalledTimes(1)
+    expect(getDummy).toBe('value')
+    expect(hasDummy).toBe(true)
+  })
 
   // it('should not observe raw mutations', () => {
   //   let dummy
