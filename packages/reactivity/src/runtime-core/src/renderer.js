@@ -1,4 +1,4 @@
-import { reactive, effect, shallowReactive } from '../../effect'
+import { reactive, effect, shallowReactive, shallowReadonly } from '../../effect'
 import { flushJob } from '../../scheduler'
 const operations = {
   creatElement(tag) {
@@ -54,6 +54,19 @@ const operations = {
     } else {
       el.setAttribute(key, nextValue)
     }
+  }
+}
+
+let currentTnstance = null
+function setCurrentInstance(instance) {
+  currentTnstance = instance
+}
+
+export function onMounted(fn) {
+  if (currentTnstance) {
+    currentTnstance.mounted.push(fn)
+  } else {
+    console.error('onMounted 函数只能在setup函数中调用')
   }
 }
 
@@ -179,7 +192,7 @@ const createRenderer = function(options) {
     const props = {}
     const attrs = {}
     for (const key in propsData) {
-      if (key in options) {
+      if (key in options || key.startsWith('on')) {
         props[key] = propsData[k]
       } else {
         attrs[key] = propsData[k]
@@ -190,30 +203,60 @@ const createRenderer = function(options) {
 
   function mountComponent(vnode, container, anchor) {
     const componentConfigs = vnode.type
-    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propConfigs } = componentConfigs
+    const { render, data, setup, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propConfigs } = componentConfigs
     const [ props, attrs ] = resolveProps(propConfigs, vnode.props)
 
     beforeCreate && beforeCreate()
 
-    const state = reactive(data())
+    const state = data ? reactive(data()) : null
+    const slots = vnode.children() || {}
 
     const instance = {
       state,
       isMounted: false,
       subNode: null,
       props: shallowReactive(props),
-      attrs
+      attrs,
+      mounted: []
+    }
+
+    const emit = function(event, payload) {
+      const eventName = `on${event[0].toUpperCase() + event.slice(1)}`
+      const handler = instance.props[eventName]
+      if (handler) {
+        handler(...payload)
+      } else {
+        console.error('事件不存在')
+      }
+    }
+
+    const setContext = {
+      attrs,
+      emit,
+      slots
+    }
+    let setupState = null
+    setCurrentInstance(instance)
+    const setupResult = setup(shallowReadonly(instance.props), setContext)
+    setCurrentInstance(null)
+    if (typeof(setupResult) === 'function') {
+      render = setupResult
+    } else {
+      setupState = setupResult
     }
 
     vnode.component = instance
     
     const renderContext = new Proxy(instance, {
       get(t, k, r) {
-        const { state, props } = t
+        const { state, props, slots } = t
+        if (k === '$slots') return slots
         if (state && key in state) {
           return state[key]
         } else if (key in props) {
           return props[key]
+        } else if (setupState && key in setupState) {
+          return setupState[key]
         } else {
           console.error('not exist')
         }
@@ -224,7 +267,9 @@ const createRenderer = function(options) {
           state[key] = v
         } else if (key in props) {
           console.error(`Attemping to mutate prop ${k}. Props are readonly.`)
-        } else {
+        } else if (setupState && key in setupState) {
+          setupState[key] = v
+        }  else {
           console.error('not exist')
         }
       }
@@ -239,6 +284,7 @@ const createRenderer = function(options) {
         patch(null, subNode, container, anchor)
         instance.isMounted = true
         mounted && mounted.call(renderContext)
+        instance.mounted && instance.mounted.forEach(hook => hook.call(renderContext))
       } else {
         beforeUpdate && beforeUpdate.call(renderContext)
         patchComponent(instance.subNode, subNode, container, anchor)
